@@ -1,1 +1,1 @@
-web: ./morals
+web: morals
