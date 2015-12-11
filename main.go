@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+  "os"
 	"math/rand"
 	"net/http"
 	"time"
@@ -11,6 +12,8 @@ import (
 )
 
 const appVersionStr = "1.0"
+
+// var port   = os.Getenv("PORT") || "5000" // (":"+os.Getenv("PORT")) || (":8080")
 
 var morals = []string{
 	"Great leaders inspire greatness in others.",
@@ -168,5 +171,5 @@ func main() {
 	m.Get("/morals", commonHeaders(logHandler(MoralHandler)))
 	m.Get("/", commonHeaders(logHandler(IndexHandler)))
 	http.Handle("/", m)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 }
