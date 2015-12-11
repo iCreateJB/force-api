@@ -13,8 +13,6 @@ import (
 
 const appVersionStr = "1.0"
 
-// var port   = os.Getenv("PORT") || "5000" // (":"+os.Getenv("PORT")) || (":8080")
-
 var morals = []string{
 	"Great leaders inspire greatness in others.",
 	"Belief is not a matter of choice, but of conviction.",
@@ -171,5 +169,7 @@ func main() {
 	m.Get("/morals", commonHeaders(logHandler(MoralHandler)))
 	m.Get("/", commonHeaders(logHandler(IndexHandler)))
 	http.Handle("/", m)
-	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
+  port := os.Getenv("PORT")
+  if port == "" { port = "5000" }
+	http.ListenAndServe(":"+port, nil)
 }
