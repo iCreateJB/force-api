@@ -1,1 +1,1 @@
-web: morals -p $PORT
+web: ./morals
