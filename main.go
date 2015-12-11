@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/icreatejb/morals/Godeps/_workspace/src/github.com/bmizerany/pat"
+	"github.com/bmizerany/pat"
 )
 
 const appVersionStr = "1.0"

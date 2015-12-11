@@ -11,7 +11,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/icreatejb/morals/Godeps/_workspace/src/github.com/bmizerany/pat"
+	"github.com/bmizerany/pat"
 )
 
 // hello world, the web server
