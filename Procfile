@@ -1,1 +1,1 @@
-web: morals -p $PORT
+web: go run main.go -p $PORT
