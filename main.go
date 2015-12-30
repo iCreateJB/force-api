@@ -7,11 +7,18 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
+	"io/ioutil"
 
 	"github.com/bmizerany/pat"
+	"github.com/jinzhu/gorm"
+	_ "github.com/lib/pq"
 )
 
 const appVersionStr = "1.0"
+
+var (
+	db gorm.DB
+)
 
 var morals = []string{
 	"Great leaders inspire greatness in others.",
@@ -128,6 +135,7 @@ var morals = []string{
 
 type Moral struct {
 	Message string `json:"message"`
+	Key     int `json:"moral_id"`
 }
 
 type ErrorMessage struct {
@@ -152,9 +160,20 @@ func logHandler(fn http.HandlerFunc) http.HandlerFunc {
 }
 
 func MoralHandler(w http.ResponseWriter, r *http.Request) {
-	moral := &Moral{Message: morals[rand.Intn(len(morals))]}
+  rand.Seed(time.Now().Unix())
+	key   := rand.Intn(len(morals) - 1) + 1
+	moral := &Moral{Message: morals[key], Key: key}
 	resp, _ := json.Marshal(moral)
 	w.WriteHeader(http.StatusOK)
+	w.Write(resp)
+}
+
+func NewMoralHandler(w http.ResponseWriter, r *http.Request) {
+	var moral Moral
+	payload, _ := ioutil.ReadAll(r.Body)
+	json.Unmarshal(payload, &moral)
+	resp, _ := json.Marshal(&Moral{Message: moral.Message, Key: moral.Key})
+	w.WriteHeader(http.StatusCreated)
 	w.Write(resp)
 }
 
@@ -164,12 +183,28 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
+func portNumber() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port  = "5000"
+	}
+  return port
+}
+
+func init(){
+	var err error
+	db, err = gorm.Open("postgres", "user=readerwriter dbname=postgres sslmode=disable")
+	if err != nil {
+		panic(err)
+		return
+	}
+}
+
 func main() {
 	m := pat.New()
 	m.Get("/morals", commonHeaders(logHandler(MoralHandler)))
+	m.Post("/morals", commonHeaders(logHandler(NewMoralHandler)))
 	m.Get("/", commonHeaders(logHandler(IndexHandler)))
 	http.Handle("/", m)
-  port := os.Getenv("PORT")
-  if port == "" { port = "5000" }
-	http.ListenAndServe(":"+port, nil)
+	http.ListenAndServe(":"+portNumber(), nil)
 }
