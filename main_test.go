@@ -13,7 +13,10 @@ import (
   "encoding/json"
 )
 
-type Response struct { Message string `json:"message"` }
+type Response struct {
+  Message string `json:"message"`
+  Key     string `json:"key"`
+}
 
 func TestIndexReturnsWithStatusOk(t *testing.T){
   request, _ := http.NewRequest("GET", "/", nil)
@@ -34,6 +37,35 @@ func TestMoralsReturnsWithStatusOk(t *testing.T){
 
   if response.Code != http.StatusOK {
       t.Fatalf("Response body did not contain expected %v:\n\tbody: %v", "200", response.Code)
+  }
+}
+
+func TestNewMoralHandler(t *testing.T){
+  type Moral struct {
+    Message string `json:"message"`
+    Key     int `json:"moral_id"`
+  }
+
+  moral := Moral{ Message: "Simple Test", Key: 2 }
+  req, _:= json.Marshal(moral)
+  request,_ := http.NewRequest("POST", "/morals", bytes.NewReader(req))
+  response  := httptest.NewRecorder()
+
+  NewMoralHandler(response, request)
+
+  var resp Moral
+  json.NewDecoder(response.Body).Decode(&resp)
+
+  if response.Code != http.StatusCreated {
+    t.Fatalf("Request did not get created.")
+  }
+
+  if resp.Message != moral.Message {
+    t.Fatalf("Request did not return the generated message.")
+  }
+
+  if resp.Key != moral.Key {
+    t.Fatalf("Request did not return the user supplied key.")
   }
 }
 
@@ -111,4 +143,21 @@ func TestLogHandler(t *testing.T) {
 	if !re.Match(b.Bytes()) {
 		t.Errorf("logHandler wrote %q", b.String())
 	}
+}
+
+func TestPortNumber(t *testing.T){
+  var portNo string
+  portNo = portNumber()
+  if portNo != "5000" {
+    t.Errorf("Default port number was not set")
+  }
+}
+
+func TestPortNumberOS(t *testing.T){
+  var portNo string
+  os.Setenv("PORT","12345")
+  portNo = portNumber()
+  if portNo != "12345" {
+    t.Errorf("Port Number was not set")
+  }
 }
