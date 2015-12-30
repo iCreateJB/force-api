@@ -5,19 +5,6 @@
 		{
 			"ImportPath": "github.com/bmizerany/pat",
 			"Rev": "b8a35001b773c267eb260a691f4e5499a3531600"
-		},
-		{
-			"ImportPath": "github.com/jinzhu/gorm",
-			"Rev": "e541ca5cdf1b24eb2b18e6662d22ffa286391a58"
-		},
-		{
-			"ImportPath": "github.com/jinzhu/inflection",
-			"Rev": "3272df6c21d04180007eb3349844c89a3856bc25"
-		},
-		{
-			"ImportPath": "github.com/lib/pq",
-			"Comment": "go1.0-cutoff-63-g11fc39a",
-			"Rev": "11fc39a580a008f1f39bb3d11d984fb34ed778d9"
 		}
 	]
 }

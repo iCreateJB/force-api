@@ -10,15 +10,15 @@ import (
 	"io/ioutil"
 
 	"github.com/bmizerany/pat"
-	"github.com/jinzhu/gorm"
-	_ "github.com/lib/pq"
+	// "github.com/jinzhu/gorm"
+	// _ "github.com/lib/pq"
 )
 
 const appVersionStr = "1.0"
 
-var (
-	db gorm.DB
-)
+// var (
+// 	db gorm.DB
+// )
 
 var morals = []string{
 	"Great leaders inspire greatness in others.",
@@ -192,12 +192,12 @@ func portNumber() string {
 }
 
 func init(){
-	var err error
-	db, err = gorm.Open("postgres", "user=readerwriter dbname=postgres sslmode=disable")
-	if err != nil {
-		panic(err)
-		return
-	}
+	// var err error
+	// // db, err = gorm.Open("postgres", "user=readerwriter dbname=postgres sslmode=disable")
+	// if err != nil {
+	// 	panic(err)
+	// 	return
+	// }
 }
 
 func main() {
