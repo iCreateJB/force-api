@@ -16,7 +16,15 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const appVersionStr = "1.1"
+const appVersionStr = "1.2"
+
+var quoteChan = make(chan Quote,30)
+
+type Quote struct{
+	Id int
+	Quote string
+	Category string
+}
 
 type Moral struct {
 	Message  string  `json:"quote"`
@@ -98,9 +106,25 @@ func getMoral() Moral {
 	return moral
 }
 
+func getMorals() {
+	rows,err := db.Query("select id,quote,category from morals offset floor(random()*(select count(*) from morals where category is not null)) limit 30")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for rows.Next(){
+		var row Quote
+		rows.Scan(&row.Id,&row.Quote,&row.Category)
+		quoteChan <- row
+	}
+}
+
 func MoralHandler(w http.ResponseWriter, r *http.Request) {
-	quote := getMoral()
-	moral := &Moral{Message: quote.Message, Category: strings.TrimSpace(quote.Category), Key: requestId()}
+	quote := <-quoteChan
+	if len(quoteChan) < 5 {
+		go getMorals()
+	}
+	var moral Moral
+	moral = Moral{Message: quote.Quote, Category: strings.TrimSpace(quote.Category), Key: requestId()}
 	resp, _ := json.Marshal(moral)
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
@@ -141,6 +165,7 @@ func init() {
 		log.Fatal("Error: Could not establish a connection with the database")
 		return
 	}
+	go getMorals()
 }
 
 func main() {
