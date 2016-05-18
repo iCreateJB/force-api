@@ -18,16 +18,11 @@ import (
 
 const appVersionStr = "1.2"
 
-var quoteChan = make(chan Quote,30)
-
-type Quote struct{
-	Id int
-	Quote string
-	Category string
-}
+var quoteChan = make(chan Moral,30)
 
 type Moral struct {
-	Message  string  `json:"quote"`
+	Id 			 int
+	Quote    string  `json:"quote"`
 	Category string  `json:"category"`
 	Key      string  `json:"request_id"`
 	Errors   []Error `json:"errors",omitempty`
@@ -42,7 +37,7 @@ var db *sql.DB
 func (m *Moral) create() (*Moral, bool) {
 	m,v := m.valid()
 	if v {
-		_, err := db.Exec("insert into morals ( category,quote,created_on ) values ( $1, $2, now() )", m.Category, m.Message)
+		_, err := db.Exec("insert into morals ( category,quote,created_on ) values ( $1, $2, now() )", m.Category, m.Quote)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -51,24 +46,24 @@ func (m *Moral) create() (*Moral, bool) {
 }
 
 func (m *Moral) valid() (*Moral, bool) {
-	if m.Message == "" {
+	if m.Quote == "" {
 		m.Errors = append(m.Errors, Error{ Message: "Message can't be blank." })
 	}
 	return m, len(m.Errors) == 0
 }
 
-func commonHeaders(fn http.HandlerFunc) http.HandlerFunc {
+func commonHeaders(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Accept", "application/vnd.morals."+appVersionStr+"+json")
 		w.Header().Set("Content-Type", "application/json")
-		fn(w, r)
+		h.ServeHTTP(w, r)
 	}
 }
 
-func logHandler(fn http.HandlerFunc) http.HandlerFunc {
+func logHandler(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		t1 := time.Now()
-		fn(w, r)
+		h.ServeHTTP(w, r)
 		t2 := time.Now()
 		log.Printf("[%s] %q %v\n", r.Method, r.URL.String(), t2.Sub(t1))
 	}
@@ -98,7 +93,7 @@ func track(moralId int) {
 
 func getMoral() Moral {
 	var moral Moral
-	err := db.QueryRow("select quote,category from morals offset floor(random()*(select count(*) from morals where category is not null)) limit 1").Scan(&moral.Message, &moral.Category)
+	err := db.QueryRow("select quote,category from morals offset floor(random()*(select count(*) from morals where category is not null)) limit 1").Scan(&moral.Quote, &moral.Category)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -112,7 +107,7 @@ func getMorals() {
 		log.Fatal(err)
 	}
 	for rows.Next(){
-		var row Quote
+		var row Moral
 		rows.Scan(&row.Id,&row.Quote,&row.Category)
 		quoteChan <- row
 	}
@@ -124,22 +119,24 @@ func MoralHandler(w http.ResponseWriter, r *http.Request) {
 		go getMorals()
 	}
 	var moral Moral
-	moral = Moral{Message: quote.Quote, Category: strings.TrimSpace(quote.Category), Key: requestId()}
+	moral    = Moral{Quote: quote.Quote, Category: strings.TrimSpace(quote.Category), Key: requestId()}
 	resp, _ := json.Marshal(moral)
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
 }
 
 func NewMoralHandler(w http.ResponseWriter, r *http.Request) {
-	moral := new(Moral)
+	moral    := new(Moral)
 	json.NewDecoder(r.Body).Decode(moral)
-	moral, v  := moral.create()
+	moral, v := moral.create()
 	if v {
 		w.WriteHeader(http.StatusCreated)
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 	}
-	resp, _ := json.Marshal(&Moral{Message: moral.Message, Category: moral.Category, Key: requestId(), Errors: moral.Errors})
+	var rec Moral
+	rec      = Moral{Quote: moral.Quote, Category: moral.Category, Key: requestId(), Errors: moral.Errors}
+	resp, _ := json.Marshal(rec)
 	w.Write(resp)
 }
 
@@ -159,7 +156,8 @@ func portNumber() string {
 
 func init() {
 	var err error
-	db, err = sql.Open("postgres", "user=readerwriter dbname=morals sslmode=disable")
+	db_url := os.Getenv("DATABASE_URL")
+	db, err = sql.Open("postgres", db_url)
 	err = db.Ping()
 	if err != nil {
 		log.Fatal("Error: Could not establish a connection with the database")
@@ -171,10 +169,14 @@ func init() {
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU() - 1)
 	defer db.Close()
+
 	m := pat.New()
-	m.Get("/morals", commonHeaders(logHandler(MoralHandler)))
-	m.Post("/morals", commonHeaders(logHandler(NewMoralHandler)))
-	m.Get("/", commonHeaders(logHandler(IndexHandler)))
-	http.Handle("/", m)
+	m.Get("/morals", http.HandlerFunc(MoralHandler))
+	m.Post("/morals", http.HandlerFunc(NewMoralHandler))
+	m.Get("/", http.HandlerFunc(IndexHandler))
+
+	wrappedM := commonHeaders(logHandler(m))
+	http.Handle("/", wrappedM)
+
 	http.ListenAndServe(":"+portNumber(), nil)
 }

@@ -14,9 +14,10 @@ import (
 )
 
 type Response struct {
-	Message  string `json:"quote"`
-	Category string `json:"category"`
-	Key      string `json:"request_id"`
+	Id       int
+	Quote    string  `json:"quote"`
+	Category string  `json:"category"`
+	Key      string  `json:"request_id"`
 	Errors   []Error `json:"errors"`
 }
 
@@ -31,6 +32,20 @@ func TestIndexReturnsWithStatusOk(t *testing.T) {
 	}
 }
 
+// func TestIndexReturnsEmptyMoral(t *testing.T) {
+// 	var resp Response
+// 	request, _ := http.NewRequest("GET", "/", nil)
+// 	response := httptest.NewRecorder()
+//
+// 	IndexHandler(response, request)
+//
+// 	json.NewDecoder(response.Body).Decode(&resp)
+//
+// 	if response.Code != http.StatusOK {
+// 		t.Fatalf("Response body did not contain expected %v:\n\tbody: %v", "200", response.Code)
+// 	}
+// }
+
 func TestMoralsReturnsWithStatusOk(t *testing.T) {
 	request, _ := http.NewRequest("GET", "/morals", nil)
 	response := httptest.NewRecorder()
@@ -44,7 +59,7 @@ func TestMoralsReturnsWithStatusOk(t *testing.T) {
 
 func TestNewMoralHandler(t *testing.T) {
 	var resp Response
-	moral := Response{Message: "Simple Test", Category: "art"}
+	moral := Response{Quote: "Simple Test", Category: "art"}
 	req, _ := json.Marshal(moral)
 	request, _ := http.NewRequest("POST", "/morals", bytes.NewReader(req))
 	response := httptest.NewRecorder()
@@ -57,7 +72,7 @@ func TestNewMoralHandler(t *testing.T) {
 		t.Fatalf("Request did not get created.")
 	}
 
-	if resp.Message != moral.Message {
+	if resp.Quote != moral.Quote {
 		t.Fatalf("Request did not return the generated message.")
 	}
 }
@@ -91,7 +106,7 @@ func TestIndexHasNoJSON(t *testing.T) {
 	var resp Response
 	json.NewDecoder(response.Body).Decode(&resp)
 
-	if resp.Message != "" {
+	if resp.Quote != "" {
 		t.Fatalf("Response body did contain a message")
 	}
 }
@@ -105,17 +120,18 @@ func TestMoralsJSONHasMessage(t *testing.T) {
 	var resp Response
 	json.NewDecoder(response.Body).Decode(&resp)
 
-	if resp.Message == "" {
+	if resp.Quote == "" {
 		t.Fatalf("Response body did not contain a message")
 	}
 }
 
 func TestCommonHeaders(t *testing.T) {
-	testHandler := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "hello world")
-	}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, `{"fake twitter json string"}`)
+	})
 
-	ts := httptest.NewServer(commonHeaders(testHandler))
+	ts := httptest.NewServer(commonHeaders(handler))
 	defer ts.Close()
 
 	resp, err := http.Get(ts.URL)
@@ -138,11 +154,12 @@ func TestLogHandler(t *testing.T) {
 	log.SetOutput(w)
 	defer log.SetOutput(os.Stderr)
 
-	testHandler := func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, "hello world")
-	}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, `{"fake twitter json string"}`)
+	})
 
-	ts := httptest.NewServer(logHandler(testHandler))
+	ts := httptest.NewServer(logHandler(handler))
 	defer ts.Close()
 
 	_, err := http.Get(ts.URL)
@@ -159,18 +176,9 @@ func TestLogHandler(t *testing.T) {
 }
 
 func TestPortNumber(t *testing.T) {
-	var portNo string
-	portNo = portNumber()
-	if portNo != "5000" {
-		t.Errorf("Default port number was not set")
-	}
-}
-
-func TestPortNumberOS(t *testing.T) {
-	var portNo string
-	os.Setenv("PORT", "12345")
-	portNo = portNumber()
-	if portNo != "12345" {
-		t.Errorf("Port Number was not set")
+	expected := "5000"
+	result := portNumber()
+	if result != expected {
+		t.Fatalf("Expected %s, got %s", expected, result)
 	}
 }
